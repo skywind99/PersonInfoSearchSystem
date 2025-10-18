@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <title>새학기 반편성 결과</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" crossorigin="anonymous">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: 'Apple SD Gothic Neo', sans-serif;
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 1rem 0.5rem;
+      box-sizing: border-box;
+    }
+
+    .container-box {
+      width: 100%;
+      max-width: 360px;  /* ✅ 더 좁은 가로폭 */
+      background-color: #ffffff;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1.5rem;
+    }
+
+    h4 {
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.8rem; /* ✅ 세로 간격 넉넉히 */
+    }
+
+    .form-group label {
+      font-size: 1rem;
+      font-weight: 500;
+      text-align: center;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-control {
+      font-size: 1.05rem;
+      padding: 0.7rem 1rem;
+    }
+
+    .btn-primary {
+      font-size: 1.1rem;
+      padding: 0.75rem;
+      width: 100%;
+      margin-top: 1rem;
+    }
+
+    #resultText {
+      font-size: 1.1rem;
+      text-align: center;
+      margin: 0;
+      min-height: 1.5em;
+    }
+
+    #message {
+      font-size: 1rem;
+      text-align: center;
+      margin-top: 1rem;
+      min-height: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container-box">
+    <h4><span id="year"></span>학년도 반편성 결과</h4>
+    <div class="form-group">
+      <label for="birth">생년월일 (8자리)</label>
+      <input type="text" id="birth" class="form-control" placeholder="예: 20080101">
+    </div>
+    <div class="form-group">
+      <label for="name">이름 (성+이름)</label>
+      <input type="text" id="name" class="form-control" placeholder="예: 김철수">
+    </div>
+    <button class="btn btn-primary" onclick="searchResult()">찾기</button>
+  </div>
+
+  <div class="container-box">
+    <p id="resultText">여기에 반편성 결과가 표시됩니다.</p>
+  </div>
+
+  <div class="container-box">
+    <div class="form-group">
+      <label for="password">관리자 비밀번호:</label>
+      <input type="password" id="password" class="form-control" placeholder="비밀번호 입력">
+    </div>
+    <button class="btn btn-primary" onclick="checkPassword()">Submit</button>
+    <p id="message"><span id="number" style="font-weight: bold;"></span></p>
+  </div>
+
+  <script>
+    let currentNumber = 0;
+    function increaseNumber() {
+      currentNumber++;
+      return currentNumber;
+    }
+
+    document.getElementById('year').innerText = new Date().getFullYear();
+
+    function searchResult() {
+      const birth = document.getElementById('birth').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const resultText = document.getElementById('resultText');
+
+      if (!birth || !name) {
+        resultText.innerText = "생년월일과 이름을 모두 입력해주세요.";
+        resultText.style.color = "red";
+        return;
+      }
+
+      resultText.innerText = "결과를 검색 중입니다...";
+      resultText.style.color = "#212529";
+
+      google.script.run
+        .withSuccessHandler((searched) => {
+          if (!searched || searched.trim() === "" || searched.toLowerCase().includes("없음")) {
+            resultText.innerText = "일치하는 학생을 찾을 수 없습니다.";
+            resultText.style.color = "red";
+          } else {
+            resultText.innerText = searched;
+            resultText.style.color = "#212529";
+          }
+        })
+        .withFailureHandler((err) => {
+          console.error("오류:", err);
+          resultText.innerText = "서버 오류로 결과를 불러올 수 없습니다.";
+          resultText.style.color = "red";
+        })
+        .doSearchResult(birth, name);
+    }
+
+    function checkPassword() {
+      const password = document.getElementById('password').value;
+      const message = document.getElementById('message');
+      const number = document.getElementById('number');
+
+      if (!password) {
+        message.innerText = "비밀번호를 입력해주세요.";
+        message.style.color = "red";
+        number.textContent = '';
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler((response) => {
+          if (response.status === 'success') {
+            message.innerText = "접속 성공. 이동 중...";
+            message.style.color = "green";
+            window.location.href = response.url;
+          } else {
+            increaseNumber();
+            message.innerHTML = '비밀번호 오류. 다시 시도해주세요. 횟수: ';
+            number.textContent = currentNumber;
+            message.appendChild(number);
+            message.style.color = "red";
+          }
+        })
+        .withFailureHandler((err) => {
+          console.error("오류:", err);
+          message.innerText = "비밀번호 확인 중 오류가 발생했습니다.";
+          message.style.color = "red";
+        })
+        .verifyPassword(password);
+    }
+  </script>
+</body>
+</html>
